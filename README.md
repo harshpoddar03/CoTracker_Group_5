@@ -6,7 +6,9 @@ CoTracker is a state-of-the-art model for tracking arbitrary points in video. Un
 
 The key insight behind CoTracker is that tracking can be formulated as a dense correspondence problem rather than an object localization problem. This allows the model to track arbitrary points, handle occlusions naturally, and maintain point identity across long video sequences without initialization or manual intervention.
 
-<img src="assets/teaser.png" alt="CoTracker Overview" width="600"/>
+<div align="center">
+  <img src="assets/teaser.png" alt="CoTracker Overview" width="600"/>
+</div>
 
 ## Technical Architecture
 
@@ -29,9 +31,13 @@ CoTracker employs a transformer-based architecture with several key components:
 
 6. **Visibility Prediction**: A dedicated component that predicts whether a tracked point is visible in each frame.
 
-<img src="assets/architecture.png" alt="CoTracker Overview" width="600"/>
+<div align="center">
+  <img src="assets/architecture.png" alt="CoTracker Overview" width="600"/>
+</div>
 
-<img src="assets/arch-2.png" alt="CoTracker Overview" width="600"/>
+<div align="center">
+  <img src="assets/arch-2.png" alt="CoTracker Overview" width="600"/>
+</div>
 
 ## Trained Weights
 
@@ -106,7 +112,7 @@ Each sequence contains:
 - RGB frames in a "frames" subdirectory
 - Point trajectories and visibility information in a .npy file
 
-<div style="text-align: center,display: flex; justify-content: center;">
+<div align="center" style="text-align: center,display: flex; justify-content: center;">
     <img src="assets/movi_a_1.gif" alt="Kubric-MOVi Overview" width="200"/>
     <img src="assets/movi_a_2.gif" alt="Kubric-MOVi Overview" width="200"/>
     <img src="assets/movi_a_3.gif" alt="Kubric-MOVi Overview" width="200"/>
@@ -154,8 +160,9 @@ class TapVidDataset(torch.utils.data.Dataset):
 This dataset provides two variants:
 - **TAP-Vid DAVIS**: Contains 30 videos from the DAVIS dataset with carefully annotated points
 - **TAP-Vid Kinetics**: Contains 1,207 videos with a broader range of scenarios and motions
-
+<div align="center">
 <img src="assets/tap-vid.gif" alt="TAP-Vid Overview" width="600"/>
+</div>
 
 ### PoseTrack Dataset
 
@@ -187,8 +194,9 @@ The dataset provides:
 - JSON annotations for each person's keypoints
 - Keypoint visibility information
 - Consistent person IDs across frames
-
+<div align="center">
 <img src="assets/posetrack.png" alt="PoseTrack Overview" width="600"/>
+</div>
 
 ### Dataset Combinations
 
@@ -598,10 +606,10 @@ We conducted additional ablation studies to understand specific factors affectin
 
 We provide several evaluation plots to visualize the performance of CoTracker across different datasets and configurations:
 
-<div style="text-align: center,display: flex; justify-content: center;">
-    <img src="assets/accuracy_plot.png" alt="Evaluation Plot 1" width="400"/>
-    <img src="assets/avg_loss.png" alt="Evaluation Plot 2" width="400"/>
-    <img src="assets/step_loss.png" alt="Evaluation Plot 2" width="400"/>
+<div align="center" style="text-align: center,display: flex; justify-content: center;">
+    <img src="assets/accuracy_plot.png" alt="Evaluation Plot 1" width="300"/>
+    <img src="assets/avg_loss.png" alt="Evaluation Plot 2" width="300"/>
+    <img src="assets/step_loss.png" alt="Evaluation Plot 2" width="300"/>
 </div>
 
 
