@@ -33,7 +33,13 @@ CoTracker employs a transformer-based architecture with several key components:
 
 <img src="assets/arch-2.png" alt="CoTracker Overview" width="600"/>
 
+## Trained Weights
 
+You can download the trained weights for CoTracker from the following links:
+
+```
+https://drive.google.com/file/d/10Vrkt6WXI2HVDr3LPWsveD3REhlA4j35/view?usp=drive_link
+```
 ### Model Parameters
 
 The default model configuration includes:
@@ -588,6 +594,19 @@ We conducted additional ablation studies to understand specific factors affectin
    - 40K-60K steps: Diminishing returns with minor gains
    - The optimal training duration appears to be around 40K-60K steps depending on the dataset
 
+## Evaluation Plots
+
+We provide several evaluation plots to visualize the performance of CoTracker across different datasets and configurations:
+
+<div style="text-align: center,display: flex; justify-content: center;">
+    <img src="assets/accuracy_plot.png" alt="Evaluation Plot 1" width="400"/>
+    <img src="assets/avg_loss.png" alt="Evaluation Plot 2" width="400"/>
+    <img src="assets/step_loss.png" alt="Evaluation Plot 2" width="400"/>
+</div>
+
+
+
+
 ## Implementation Challenges and Solutions
 
 During our implementation, we encountered several challenges:
@@ -642,16 +661,3 @@ We see several promising directions for future work:
 CoTracker represents a paradigm shift in video tracking, focusing on point-level correspondences rather than object-level detection. Our pose tracking extensions demonstrate how this approach can be specialized for specific domains, offering improved performance for human motion tracking while maintaining the flexibility of the original model.
 
 By releasing this implementation, we hope to encourage further research in correspondence-based tracking and its applications to human motion analysis, augmented reality, video editing, and beyond.
-
-## Citation
-
-If you use this code in your research, please cite the main paper:
-
-```
-@inproceedings{karaev2023cotracker,
-  title={CoTracker: It Is About Tracking Correspondences, Not Just Objects},
-  author={Karaev, Nikita and Karaev, Ignacio and Neverova, Natalia and Vedaldi, Andrea and Zisserman, Andrew},
-  journal={arXiv preprint arXiv:2305.11427},
-  year={2023}
-}
-```
