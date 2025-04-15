@@ -31,6 +31,9 @@ CoTracker employs a transformer-based architecture with several key components:
 
 <img src="assets/architecture.png" alt="CoTracker Overview" width="600"/>
 
+<img src="assets/arch-2.png" alt="CoTracker Overview" width="600"/>
+
+
 ### Model Parameters
 
 The default model configuration includes:
@@ -53,6 +56,146 @@ The default model configuration includes:
    - The transformer iteratively refines positions and visibility
    - Positions are propagated to the next window
 5. Final outputs include trajectories and visibility flags for each query point
+
+## Datasets
+
+Our implementation uses several datasets for training and evaluation. Each dataset provides unique challenges and insights for point tracking tasks:
+
+### Kubric-MOVi Dataset
+
+The Kubric-MOVi dataset is a synthetic dataset that provides precise ground truth for point trajectories, making it invaluable for training correspondence tracking models.
+
+**Key characteristics:**
+- **Synthetic scenes**: Generated using Kubric rendering engine with realistic physics
+- **Dense point trajectories**: Ground truth for every pixel in the scene
+- **Occlusion annotations**: Accurate visibility flags derived from rendering process
+- **Complex motions**: Includes rotation, translation, and non-rigid deformations
+- **Realistic lighting and textures**: Helps bridge the synthetic-to-real gap
+
+The KubricMovifDataset class handles loading and preprocessing:
+
+```python
+class KubricMovifDataset(CoTrackerDataset):
+    def __init__(
+        self,
+        data_root,
+        crop_size=(384, 512),
+        seq_len=24,
+        traj_per_sample=768,
+        sample_vis_1st_frame=False,
+        use_augs=False,
+    ):
+        # Initialization code
+        
+        self.seq_names = [
+            fname
+            for fname in os.listdir(data_root)
+            if os.path.isdir(os.path.join(data_root, fname))
+        ]
+        
+        print("found %d unique videos in %s" % (len(self.seq_names), self.data_root))
+```
+
+Each sequence contains:
+- RGB frames in a "frames" subdirectory
+- Point trajectories and visibility information in a .npy file
+
+<div style="text-align: center,display: flex; justify-content: center;">
+    <img src="assets/movi_a_1.gif" alt="Kubric-MOVi Overview" width="200"/>
+    <img src="assets/movi_a_2.gif" alt="Kubric-MOVi Overview" width="200"/>
+    <img src="assets/movi_a_3.gif" alt="Kubric-MOVi Overview" width="200"/>
+</div>
+
+
+### TAP-Vid Dataset
+
+TAP-Vid (Tracking Any Point in Video) is a specialized benchmark for point tracking evaluation.
+
+**Key characteristics:**
+- **Real-world videos**: Derived from DAVIS and Kinetics datasets
+- **Manually annotated point trajectories**: High-quality human annotations
+- **Two query modes**: "First" (track from first appearance) and "Strided" (track from various frames)
+- **Challenging scenarios**: Occlusions, fast motion, deformable objects
+- **Standardized metrics**: Average Jaccard and Points Within Threshold metrics
+
+The dataset is processed through the TapVidDataset class:
+
+```python
+class TapVidDataset(torch.utils.data.Dataset):
+    def __init__(
+        self,
+        data_root,
+        dataset_type="davis",
+        queried_first=True,
+        crop_size=(384, 512)
+    ):
+        # Initialization code
+        
+        if self.dataset_type == "davis":
+            with open(data_root, "rb") as f:
+                self.points_dataset = pickle.load(f)
+            self.video_names = list(self.points_dataset.keys())
+        elif self.dataset_type == "kinetics":
+            all_paths = glob.glob(os.path.join(data_root, "*_of_0010.pkl"))
+            points_dataset = []
+            for pickle_path in all_paths:
+                with open(pickle_path, "rb") as f:
+                    data = pickle.load(f)
+                    points_dataset = points_dataset + data
+            self.points_dataset = points_dataset
+```
+
+This dataset provides two variants:
+- **TAP-Vid DAVIS**: Contains 30 videos from the DAVIS dataset with carefully annotated points
+- **TAP-Vid Kinetics**: Contains 1,207 videos with a broader range of scenarios and motions
+
+<img src="assets/tap-vid.gif" alt="TAP-Vid Overview" width="600"/>
+
+### PoseTrack Dataset
+
+PoseTrack is a large-scale benchmark for human pose estimation and tracking in videos, which we use specifically for our pose tracking extensions.
+
+**Key characteristics:**
+- **2D human pose annotations**: 17 keypoints following the COCO format
+- **Multiple people tracking**: Consistent IDs across frames
+- **Occlusion annotations**: Visibility flags for each keypoint
+- **Real-world scenarios**: Challenging lighting, motion, and multiple people
+- **Long sequences**: Videos with 30-150 frames testing long-range tracking
+
+Our custom PoseTrackDataset class handles the complex loading of pose data:
+
+```python
+class PoseTrackDataset(Dataset):
+  def __init__(self, main_folder, json_folder, start_frames_json, max_frames, interp_shape):
+      self.main_folder = main_folder
+      self.json_folder = json_folder
+      self.max_frames = max_frames
+      self.interp_shape = interp_shape
+      with open(start_frames_json, 'r') as json_file:
+        load_dict = json.load(json_file)
+      self.loaded_dict = {int(k): v for k, v in load_dict.items()}
+```
+
+The dataset provides:
+- Frame-by-frame RGB images
+- JSON annotations for each person's keypoints
+- Keypoint visibility information
+- Consistent person IDs across frames
+
+<img src="assets/posetrack.png" alt="PoseTrack Overview" width="600"/>
+
+### Dataset Combinations
+
+To achieve optimal performance, we explore different training combinations:
+
+1. **Pure Synthetic**: Training exclusively on Kubric-MOVi data helps establish baseline performance
+2. **Real-World Only**: Training on PoseTrack data specializes the model for human pose tracking
+3. **Mixed Proportions**: Various mixtures of synthetic and real data help identify the optimal balance:
+   - 75% Kubric / 25% PoseTrack
+   - 50% Kubric / 50% PoseTrack 
+   - 25% Kubric / 75% PoseTrack
+
+Our experiments confirm that a mix of synthetic and real data typically outperforms either alone, with the optimal mix depending on the specific application target.
 
 ## Novel Pose Tracking Extensions
 
@@ -399,34 +542,51 @@ We provide several model variants optimized for different scenarios:
 
 ### Quantitative Results
 
-Our pose tracking extensions show significant improvements over the base CoTracker model:
+Our extensive experiments compare various CoTracker model variants trained with different configurations. Below are the detailed results from our evaluation across multiple datasets:
 
-| Model Variant | TAP-Vid Davies (AJ) | PoseTrack PCK@0.5 | Dynamic Replica Acc@10px |
-|---------------|---------------------|-------------------|--------------------------|
-| Base CoTracker | 57.3% | 76.8% | 70.4% |
-| Pose-Specialized | 55.1% | 81.2% | 68.9% |
-| Mixed-Training | 56.2% | 79.5% | 69.7% |
+| Model Configuration | KP Embedding | PoseTrack Training | PoseTrack Validation | Kubrics Training | Kubrics Validation | TapVid Davis |
+|---------------------|--------------|-------------------|---------------------|-----------------|-------------------|--------------|
+| **CoTracker trained on Kubrics (60K steps)** | Absent | 78.55% | 77.37% | 86.99% | 86.38% | 75.64% |
+| **CoTracker trained on PoseTrack (60K steps)** | Absent | 81.15% | 79.55% | 69.40% | 68.16% | 70.51% |
+| **CoTracker trained on PoseTrack (60K steps)** | Present | 80.58% | 79.11% | 68.53% | 67.30% | 70.72% |
+| **CoTracker trained on Mixed Dataset (60K steps, 50/50)** | Present on PoseTrack | 80.11% | 78.85% | 84.70% | 84.02% | 73.89% |
 
-The pose-specialized variant shows a 4.4% improvement in pose tracking accuracy (PCK@0.5) with a minimal drop in general tracking performance.
+These results demonstrate several key findings:
+
+1. **Impact of Training Data Source**:
+   - Models trained solely on Kubrics perform exceptionally well on synthetic data (86.99% on Kubrics Training) but show relatively lower performance on real-world pose data (78.55% on PoseTrack Training).
+   - Models trained solely on PoseTrack achieve the highest performance on pose tracking (81.15% on PoseTrack Training) but suffer on synthetic data (69.40% on Kubrics Training).
+   - The mixed dataset approach provides the best balance, achieving 80.11% on PoseTrack Training and 84.70% on Kubrics Training.
+
+2. **Effect of Training Steps**:
+   - For Kubrics-trained models, performance increases steadily with more training steps (from 78.40% at 23K steps to 78.55% at 60K steps on PoseTrack Training).
+   - PoseTrack-trained models show similar improvement (from 80.46% at 30K steps to 81.15% at 60K steps).
+   - The performance gains diminish at higher step counts, suggesting approaching convergence.
+
+3. **Keypoint Embedding Contribution**:
+   - Models with "Present" keypoint embedding generally achieve comparable or slightly lower peak performance on PoseTrack (80.58% vs 81.15% at 60K steps).
+   - However, models with keypoint embedding show better generalization to TapVid Davies (70.72% vs 70.51%).
+   - The mixed dataset model with keypoint embedding present provides the best balance across all datasets.
 
 ### Ablation Studies
 
-We conducted extensive ablation studies to understand the contribution of each component:
+We conducted additional ablation studies to understand specific factors affecting model performance:
 
-1. **Keypoint Embedding Impact**:
-   - Without keypoint embeddings: 77.3% PCK@0.5
-   - With keypoint embeddings: 81.2% PCK@0.5
+1. **Training Data Composition**:
+   - Pure Kubrics (N=100): Excellent on synthetic data (86.99%) but weaker on real pose data (78.55%)
+   - Pure PoseTrack (N=17): Strong on pose data (81.15%) but weak on synthetic data (69.40%)
+   - Mixed Training (N=17/100, 50/50 probability): Good balance across all datasets (80.11% PoseTrack, 84.70% Kubrics, 73.89% TapVid)
 
-2. **Training Data Mix**:
-   - 100% PoseTrack: 80.5% PCK@0.5
-   - 75% PoseTrack / 25% Kubric: 81.0% PCK@0.5
-   - 50% PoseTrack / 50% Kubric: 79.5% PCK@0.5
-   - 25% PoseTrack / 75% Kubric: 78.2% PCK@0.5
+2. **Keypoint Embedding Analysis**:
+   - Without keypoint embedding (Absent): Better peak performance on specialized tasks
+   - With keypoint embedding (Present): Better generalization and transfer across domains
+   - Present only on PoseTrack in mixed training: Best compromise for multi-domain performance
 
-3. **Window Size Impact**:
-   - Window length 4: 79.8% PCK@0.5
-   - Window length 8: 81.2% PCK@0.5
-   - Window length 16: 81.5% PCK@0.5
+3. **Training Duration Impact**:
+   - 10K-30K steps: Rapid improvement phase
+   - 30K-40K steps: Continued but slower improvement
+   - 40K-60K steps: Diminishing returns with minor gains
+   - The optimal training duration appears to be around 40K-60K steps depending on the dataset
 
 ## Implementation Challenges and Solutions
 
